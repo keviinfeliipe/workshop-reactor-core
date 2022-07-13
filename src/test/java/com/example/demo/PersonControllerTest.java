@@ -16,6 +16,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -69,30 +70,49 @@ public class PersonControllerTest {
 
     @Test
     void get() {
+        var pers = new Person("Kevin Vargas");
+        pers.setId("1");
+        when(repository.findById("1")).thenReturn(Mono.just(pers));
         webTestClient.get()
                 .uri("/person/1")
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus()
+                .isOk()
                 .expectBody(Person.class)
                 .consumeWith(personEntityExchangeResult -> {
                     var person = personEntityExchangeResult.getResponseBody();
                     assert person != null;
                 });
+
+        verify(personService).update(argumentCaptor.capture());
+        var person2 = argumentCaptor.getValue().block();
+        Assertions.assertEquals("Brayan Vargas", person2.getName());
     }
 
     @Test
     void update() {
-        var request = Mono.just(new Person());
+        var person = new Person("Kevin Felipe");
+        person.setId("1");
+        when(repository.findById("1")).thenReturn(Mono.just(person));
+        when(repository.save(person)).thenReturn(Mono.just(person));
+        var request = Mono.fromCallable(() -> {
+            person.setName("Brayan Vargas");
+            return person;
+        });
         webTestClient.put()
                 .uri("/person")
                 .body(request, Person.class)
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody().isEmpty();
+
     }
 
     @Test
     void delete() {
+        var pers = new Person("Kevin Vargas");
+        pers.setId("1");
+        when(repository.save(pers)).thenReturn(Mono.just(pers));
         webTestClient.delete()
                 .uri("/person/1")
                 .exchange()
